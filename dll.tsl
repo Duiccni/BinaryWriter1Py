@@ -1,0 +1,133 @@
+; ---------------------------------------
+; PE Metadata
+; ---------------------------------------
+
+M COFF, 0x40
+M BASE_OPTH, 0x70
+M IMAGE_FILE_EXECUTABLE_IMAGE, 0x0002
+M IMAGE_FILE_DLL, 0x2000
+M IMAGE_FILE_LARGE_ADDRESS_AWARE, 0x0020
+M IMAGE_SUBSYSTEM_WINDOWS_CUI, 3
+M IMAGE_DLLCHARACTERISTIC, 0x8160
+M IMAGE_SCN_CNT_CODE, 0x00000020
+M IMAGE_SCN_MEM_EXECUTE, 0x20000000
+M IMAGE_SCN_MEM_READ, 0x40000000
+M SEC, 0x200
+M PAGE, 0x1000
+
+S "MZ"
+A COFF - 4
+D COFF
+
+S "PE"
+W 0
+
+W 0x8664        ; AMD64
+W 1             ; 1 section
+D 0             ; timeDateStamp
+
+Q 0             ; symbol table
+
+W BASE_OPTH + 8
+W IMAGE_FILE_EXECUTABLE_IMAGE | IMAGE_FILE_DLL | IMAGE_FILE_LARGE_ADDRESS_AWARE
+
+; Optional Header
+W 0x20B         ; PE32+
+W 0            ; Linker version
+D SEC           ; Size of code
+D 0             ; Initialized data size
+D 0             ; Uninitialized data size
+
+D 0             ; Entry point
+D PAGE          ; Base of code
+
+Q 0x140000000   ; Image base
+D PAGE          ; Section alignment
+D SEC           ; File alignment
+
+W 6             ; OS Version
+W 0
+D 0
+W 6
+W 0
+
+D 0             ; Win32 Version
+D PAGE * 2      ; Size of image
+D SEC           ; Size of headers
+D 0             ; Checksum
+W 2             ; Subsystem
+W IMAGE_DLLCHARACTERISTIC
+
+Q PAGE << 4     ; Stack reserve
+Q PAGE          ; Stack commit
+Q PAGE << 4     ; Heap reserve
+Q PAGE          ; Heap commit
+D 0             ; LoaderFlags
+D 1             ; Number of RVA and sizes
+
+; Directories
+M EXP, PAGE + SEC
+D EXP             ; Export table
+D SEC
+
+; Section
+S "MAIN_SEC"
+D PAGE
+D PAGE
+D SEC * 2
+D SEC
+D 0
+D 0
+D 0
+D IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_MEM_READ
+
+A SEC
+
+I "func.bin"  ; Your binary with just mov eax, ecx / inc eax / ret
+
+A SEC * 2
+
+M OFF, EXP - SEC * 2
+
+; ---------------------------------------
+; Export Directory Table
+; ---------------------------------------
+
+D 0         ; Flag
+D 0         ; TimeDateStamp
+D 0         ; Major/Minor Version
+L NameRVA
+D 0         ; Name RVA
+D 0         ; Ordinal Base
+D 1         ; Number of functions
+D 1         ; Number of names
+L FuncRVA
+D 0         ; RVA of functions
+L NameRVA
+D 0         ; RVA of names
+L IndexRVA
+D 0         ; RVA of ordinals
+
+; DLL Name
+
+CD NameRVA, _HERE + OFF
+S "mydll.dll"
+B 0
+
+L Fname0
+S "func0"
+B 0
+
+; Export Address Table (EAT)
+CD FuncRVA, _HERE + OFF
+D PAGE
+
+; Name Pointer Table (NPT)
+CD NameRVA, _HERE + OFF
+D Fname0 + OFF
+
+; Ordinal Table
+CD IndexRVA, _HERE + OFF
+W 0
+
+A SEC * 3
